@@ -359,8 +359,18 @@ def create_batches(dataset, batch_size, order='keep', str_words=False, tag_padde
     newdata = np.array(newdata)  
     batches = []
     num_batches = np.ceil(len(dataset)/float(batch_size)).astype('int')
+    # print(f"num_batches: {num_batches}")
 
     for i in range(num_batches):
+        # print(f"batch_size: {batch_size}")
+        # print(f"newdata.shape: {newdata.shape}")
+        # print(f"i: {i}")
+        # print(f"batch_size: {batch_size}")
+        # print(f"min(len(dataset),(i+1)*batch_size): {min(len(dataset),(i+1)*batch_size)}")
+        # print(f"len(dataset): {len(dataset)}")
+        # print(f"(i+1)*batch_size): {(i+1)*batch_size}")
+        # print('-'*20)
+
         batch_data = newdata[(i*batch_size):min(len(dataset),(i+1)*batch_size)]
 
         words_seqs = [itm['words'] for itm in batch_data]

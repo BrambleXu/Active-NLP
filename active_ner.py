@@ -12,7 +12,7 @@ from neural_ner.models import CNN_CNN_LSTM_BB
 import matplotlib.pyplot as plt
 import torch
 from active_learning import Acquisition
-import cPickle as pkl
+import pickle as pkl
 import numpy as np
 
 import argparse
@@ -293,11 +293,19 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 trainer = Trainer(model, optimizer, result_path, model_name, usedataset=opt.dataset, mappings= mappings)
 
 active_train_data = [train_data[i] for i in acquisition_function.train_index]
+# print(f"type(train_data): {type(train_data)}")
+# print(f"len(train_data): {len(train_data)}")
+# print(f"acquisition_function.train_index: {acquisition_function.train_index}")   
+# print(f"len(active_train_data): {len(active_train_data)}")
+# print(f"active_train_data[0]: {active_train_data[0]}")
+
 tokens_acquired = sum([len(x['words']) for x in active_train_data])
+# print(f"tokens_acquired: {tokens_acquired}")
 
 num_acquisitions_required = 25
 acquisition_strat_all = [2]*24 + [5]*10 + [0]
 acquisition_strat = acquisition_strat_all[:num_acquisitions_required]
+# print(f"acquisition_strat: {acquisition_strat}")
 
 for acquire_percent in acquisition_strat:
     
@@ -305,11 +313,15 @@ for acquire_percent in acquisition_strat:
     checkpoint_path = os.path.join(result_path, model_name, checkpoint_folder)
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
-        
+
     acq_plot_every = max(len(acquisition_function.train_index)/(5*parameters['batch_size']),1)
+    # losses, all_F = trainer.train_model(opt.num_epochs, active_train_data, dev_data, test_train_data, test_data,
+    #                                     learning_rate = learning_rate, checkpoint_folder = checkpoint_folder,
+    #                                     batch_size = min(parameters['batch_size'], len(acquisition_function.train_index)/100),
+    #                                     eval_test_train=False, plot_every = acq_plot_every, lr_decay = 0.05)
     losses, all_F = trainer.train_model(opt.num_epochs, active_train_data, dev_data, test_train_data, test_data,
                                         learning_rate = learning_rate, checkpoint_folder = checkpoint_folder,
-                                        batch_size = min(parameters['batch_size'],len(acquisition_function.train_index)/100),
+                                        batch_size = parameters['batch_size'],
                                         eval_test_train=False, plot_every = acq_plot_every, lr_decay = 0.05)
     
     pkl.dump(acquisition_function, open(os.path.join(checkpoint_path,'acquisition1.p'),'wb'))
