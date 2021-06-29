@@ -14,14 +14,19 @@ import torch
 from active_learning import Acquisition
 import pickle as pkl
 import numpy as np
-
+import sys
 import argparse
+
+
+temp=sys.stdout
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', action='store', dest='dataset', default='conll', type=str,
                     help='Dataset to be Used')
 parser.add_argument('--result_path', action='store', dest='result_path', default='neural_ner/results/',
+                    type=str, help='Path to Save/Load Result')
+parser.add_argument('--log_path', action='store', dest='log_path', default='logs/output.log',
                     type=str, help='Path to Save/Load Result')
 parser.add_argument('--usemodel', default='CNN_BiLSTM_CRF', type=str, dest='usemodel',
                     help='Model to Use')
@@ -61,7 +66,7 @@ if opt.usemodel == 'CNN_BiLSTM_CRF':
     parameters['cnchl'] = 25
     
     parameters['lrate'] = 0.015
-    parameters['batch_size'] = 16
+    parameters['batch_size'] = 32
     parameters['acqmd'] = 'd'
     
 elif opt.usemodel == 'CNN_BiLSTM_CRF_MC':
@@ -77,7 +82,7 @@ elif opt.usemodel == 'CNN_BiLSTM_CRF_MC':
     parameters['cnchl'] = 25
     
     parameters['lrate'] = 0.015
-    parameters['batch_size'] = 16
+    parameters['batch_size'] = 32
     parameters['acqmd'] = 'm'
     
 elif opt.usemodel == 'CNN_BiLSTM_CRF_BB':
@@ -93,7 +98,7 @@ elif opt.usemodel == 'CNN_BiLSTM_CRF_BB':
     parameters['cnchl'] = 25
     
     parameters['lrate'] = 0.015
-    parameters['batch_size'] = 16
+    parameters['batch_size'] = 32
     parameters['sigmp'] = float(np.exp(-3))
     parameters['acqmd'] = 'b'
 
@@ -111,7 +116,7 @@ elif opt.usemodel == 'CNN_CNN_LSTM':
     parameters['dchid'] = 50
     
     parameters['lrate'] = 0.01
-    parameters['batch_size'] = 16
+    parameters['batch_size'] = 32
     parameters['acqmd'] = 'd'
     
 elif opt.usemodel == 'CNN_CNN_LSTM_MC':
@@ -128,7 +133,7 @@ elif opt.usemodel == 'CNN_CNN_LSTM_MC':
     parameters['dchid'] = 50
     
     parameters['lrate'] = 0.01
-    parameters['batch_size'] = 16
+    parameters['batch_size'] = 32
     parameters['acqmd'] = 'm'
 
 elif opt.usemodel == 'CNN_CNN_LSTM_BB':
@@ -156,6 +161,7 @@ else:
 use_dataset = opt.dataset
 dataset_path = os.path.join('datasets', use_dataset)
 result_path = os.path.join(opt.result_path, use_dataset)
+log_path = opt.log_path
 model_name = opt.usemodel
 model_load = opt.reload
 checkpoint = opt.checkpoint
@@ -169,7 +175,10 @@ print('Acquisition:', acquire_method)
 
 if not os.path.exists(result_path):
     os.makedirs(result_path)
-    
+
+if not os.path.exists(log_path):
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
 if not os.path.exists(os.path.join(result_path, model_name)):
     os.makedirs(os.path.join(result_path, model_name))
 
@@ -183,6 +192,14 @@ elif opt.dataset == 'ontonotes':
     test_train_data = train_data[-10000:]
 else:
     raise NotImplementedError()
+
+# Logging output setup
+f = open(log_path, "a+")
+
+sys.stdout = f   # output to file
+print('Model:', model_name)
+print('Dataset:', use_dataset)
+print('Acquisition:', acquire_method)
 
 word_to_id = mappings['word_to_id']
 tag_to_id = mappings['tag_to_id']
@@ -302,13 +319,23 @@ active_train_data = [train_data[i] for i in acquisition_function.train_index]
 tokens_acquired = sum([len(x['words']) for x in active_train_data])
 # print(f"tokens_acquired: {tokens_acquired}")
 
-num_acquisitions_required = 25
-acquisition_strat_all = [2]*24 + [5]*10 + [0]
+num_acquisitions_required = 100
+# acquisition_strat_all = [2]*24 + [5]*10 + [0]
+acquisition_strat_all = [1]*100
 acquisition_strat = acquisition_strat_all[:num_acquisitions_required]
 # print(f"acquisition_strat: {acquisition_strat}")
+acquire_percent_total = 0
 
 for acquire_percent in acquisition_strat:
-    
+    acquire_percent_total += acquire_percent
+    print(f"Current acquire_percent_total: {acquire_percent_total}")
+    print(f"Current len(acquisition_function.train_index): {len(acquisition_function.train_index)}")
+
+    sys.stdout=temp # output to consle
+    print(f"Current acquire_percent_total: {acquire_percent_total}")
+    print(f"Current len(acquisition_function.train_index): {len(acquisition_function.train_index)}")
+    sys.stdout = f   # output to file
+
     checkpoint_folder = os.path.join('active_checkpoint',acquire_method, str(tokens_acquired).zfill(8))
     checkpoint_path = os.path.join(result_path, model_name, checkpoint_folder)
     if not os.path.exists(checkpoint_path):
@@ -331,12 +358,18 @@ for acquire_percent in acquisition_strat:
     
     pkl.dump(acquisition_function, open(os.path.join(checkpoint_path,'acquisition2.p'),'wb'))
     
-    print ('*'*80)
     saved_epoch = np.argmax(np.array([item[1] for item in all_F]))
+    print ('*'*80)
     print ('Budget Exhausted: %d, Best F on Validation %.3f, Best F on Test %.3f' %(tokens_acquired,
                                         all_F[saved_epoch][1], all_F[saved_epoch][2]))
     print ('*'*80)
-    
+    sys.stdout=temp # output to consle
+    print ('*'*80)
+    print ('Budget Exhausted: %d, Best F on Validation %.3f, Best F on Test %.3f' %(tokens_acquired,
+                                        all_F[saved_epoch][1], all_F[saved_epoch][2]))
+    print ('*'*80)
+    sys.stdout = f   # output to file
+
     active_train_data = [train_data[i] for i in acquisition_function.train_index]
     tokens_acquired = sum([len(x['words']) for x in active_train_data])
     

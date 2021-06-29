@@ -115,13 +115,14 @@ class Trainer(object):
                     torch.save(self.model, os.path.join(self.model_name, checkpoint_folder, 'modelweights'))
                 best_test_F, new_test_F, _ = self.evaluator(self.model, test_data, best_test_F,
                                                             checkpoint_folder=checkpoint_folder)
+                print(f"Epoch: {epoch}, best_test_F: {best_test_F}, new_test_F: {new_test_F}")
                 sys.stdout.flush()
 
                 all_F.append([new_train_F, new_dev_F, new_test_F])
                 
                 self.model.train(True)
 
-            print('*'*80)
             print('Epoch %d Complete: Time Taken %d' %(epoch ,time.time() - t))
+            print('*'*80)
 
         return losses, all_F
